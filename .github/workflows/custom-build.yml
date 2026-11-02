@@ -41,7 +41,18 @@ jobs:
           gradle-version: "8.7"
           validate-wrappers: false
 
-      - name: Patch App Name and Version
+      - name: Inject Custom Build Icon
+        run: |
+          if [ -f "build-icon.png" ]; then
+            for density in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+              target_dir="app/src/main/res/mipmap-${density}"
+              mkdir -p "${target_dir}"
+              cp "build-icon.png" "${target_dir}/ic_launcher.png"
+              cp "build-icon.png" "${target_dir}/ic_launcher_round.png"
+            done
+          fi
+
+      - name: Patch App Name, Version, and Repair XML Resources
         env:
           INPUT_APP_NAME: ${{ github.event.inputs.app_name || 'Chaotic Launcher' }}
           INPUT_APP_VERSION: ${{ github.event.inputs.app_version || '1.0.0' }}
@@ -55,31 +66,90 @@ jobs:
           app_version = os.environ.get("INPUT_APP_VERSION", "1.0.0")
           escaped_name = escape(app_name, {'"': '&quot;', "'": '&apos;'})
 
-          manifest_path = "app/src/main/AndroidManifest.xml"
-          if os.path.exists(manifest_path):
-              with open(manifest_path, "r", encoding="utf-8") as f:
-                  manifest = f.read()
-              manifest = re.sub(
-                  r'(<application\b[^>]*?\bandroid:label=")[^"]*(")',
-                  rf'\g<1>{escaped_name}\2',
-                  manifest,
-                  count=1,
-                  flags=re.DOTALL
-              )
-              with open(manifest_path, "w", encoding="utf-8") as f:
-                  f.write(manifest)
+          has_custom_icon = os.path.exists("build-icon.png")
+          icon_ref = "@mipmap/ic_launcher" if has_custom_icon else "@drawable/ic_launcher_foreground"
+          round_icon_ref = "@mipmap/ic_launcher_round" if has_custom_icon else "@drawable/ic_launcher_foreground"
 
-          strings_path = "app/src/main/res/values/strings.xml"
-          if os.path.exists(strings_path):
-              with open(strings_path, "r", encoding="utf-8") as f:
-                  strings_xml = f.read()
-              strings_xml = re.sub(
-                  r'(<string\s+name="app_name">)[^<]*(</string>)',
-                  rf'\g<1>{escaped_name}\2',
-                  strings_xml
-              )
-              with open(strings_path, "w", encoding="utf-8") as f:
-                  f.write(strings_xml)
+          manifest_xml = f'''<?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+              <application
+                  android:allowBackup="true"
+                  android:icon="{icon_ref}"
+                  android:label="{escaped_name}"
+                  android:roundIcon="{round_icon_ref}"
+                  android:supportsRtl="true"
+                  android:theme="@style/Theme.CustomTextWidget">
+
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+
+                  <activity
+                      android:name=".WidgetConfigActivity"
+                      android:exported="true"
+                      android:windowSoftInputMode="adjustResize">
+                      <intent-filter>
+                          <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+                      </intent-filter>
+                  </activity>
+
+                  <receiver
+                      android:name=".widget.CustomTextWidgetProvider"
+                      android:exported="true"
+                      android:label="@string/widget_name">
+                      <intent-filter>
+                          <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                      </intent-filter>
+                      <meta-data
+                          android:name="android.appwidget.provider"
+                          android:resource="@xml/custom_text_widget_info" />
+                  </receiver>
+
+              </application>
+
+          </manifest>
+          '''
+
+          os.makedirs("app/src/main", exist_ok=True)
+          with open("app/src/main/AndroidManifest.xml", "w", encoding="utf-8") as f:
+              f.write(manifest_xml.strip() + "\n")
+
+          widget_info_xml = '''<?xml version="1.0" encoding="utf-8"?>
+          <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+              android:configure="com.custom.textwidget.WidgetConfigActivity"
+              android:description="@string/widget_desc"
+              android:initialLayout="@layout/widget_canvas_layout"
+              android:minWidth="110dp"
+              android:minHeight="60dp"
+              android:minResizeWidth="60dp"
+              android:minResizeHeight="40dp"
+              android:resizeMode="horizontal|vertical"
+              android:targetCellWidth="3"
+              android:targetCellHeight="2"
+              android:updatePeriodMillis="0"
+              android:widgetCategory="home_screen"
+              android:widgetFeatures="reconfigurable" />
+          '''
+          os.makedirs("app/src/main/res/xml", exist_ok=True)
+          with open("app/src/main/res/xml/custom_text_widget_info.xml", "w", encoding="utf-8") as f:
+              f.write(widget_info_xml.strip() + "\n")
+
+          strings_xml = f'''<?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <string name="app_name">{escaped_name}</string>
+              <string name="widget_name">Custom Text Widget</string>
+              <string name="widget_desc">Fully customizable text widget with custom shapes, fonts, placement, and background transparency.</string>
+          </resources>
+          '''
+          os.makedirs("app/src/main/res/values", exist_ok=True)
+          with open("app/src/main/res/values/strings.xml", "w", encoding="utf-8") as f:
+              f.write(strings_xml.strip() + "\n")
 
           gradle_path = "app/build.gradle.kts"
           if os.path.exists(gradle_path):
@@ -111,29 +181,6 @@ jobs:
               with open(gradle_path, "w", encoding="utf-8") as f:
                   f.write(gradle_content)
           EOF
-
-      - name: Inject Custom Build Icon
-        run: |
-          if [ -f "build-icon.png" ]; then
-            for density in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
-              target_dir="app/src/main/res/mipmap-${density}"
-              mkdir -p "${target_dir}"
-              cp "build-icon.png" "${target_dir}/ic_launcher.png"
-              cp "build-icon.png" "${target_dir}/ic_launcher_round.png"
-            done
-            python3 - << 'EOF'
-          import os
-          import re
-          manifest_path = "app/src/main/AndroidManifest.xml"
-          if os.path.exists(manifest_path):
-              with open(manifest_path, "r", encoding="utf-8") as f:
-                  content = f.read()
-              content = re.sub(r'android:icon="[^"]*"', 'android:icon="@mipmap/ic_launcher"', content)
-              content = re.sub(r'android:roundIcon="[^"]*"', 'android:roundIcon="@mipmap/ic_launcher_round"', content)
-              with open(manifest_path, "w", encoding="utf-8") as f:
-                  f.write(content)
-          EOF
-          fi
 
       - name: Build Debug APK
         run: gradle assembleDebug --no-daemon
