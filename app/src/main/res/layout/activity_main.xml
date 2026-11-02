@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout android:background="#000000" android:layout_height="match_parent" android:layout_width="match_parent" android:orientation="vertical" android:padding="20dp" xmlns:android="[http://schemas.android.com/apk/res/android](http://schemas.android.com/apk/res/android)">
+<TextView android:layout_height="wrap_content" android:layout_width="match_parent" android:text="TextWidget Studio" android:textColor="#FFFFFF" android:textSize="26sp" android:textStyle="bold"/>
+<TextView android:layout_height="wrap_content" android:layout_marginTop="4dp" android:layout_width="match_parent" android:text="Sculpt custom shapes, transparency, fonts &amp; freeform home screen widgets." android:textColor="#94A3B8" android:textSize="13sp"/>
+<Button android:backgroundTint="#A855F7" android:id="@+id/btnPinNewWidget" android:layout_height="52dp" android:layout_marginTop="18dp" android:layout_width="match_parent" android:text="+ Add New Text Widget to Home Screen" android:textAllCaps="false" android:textColor="#FFFFFF" android:textSize="15sp" android:textStyle="bold"/>
+<TextView android:gravity="center" android:id="@+id/emptyStateText" android:layout_height="wrap_content" android:layout_marginTop="36dp" android:layout_width="match_parent" android:text="No widgets configured yet.\nTap the button above or add a widget from your Home Screen launcher!" android:textColor="#64748B" android:textSize="14sp"/>
+<ScrollView android:layout_height="0dp" android:layout_marginTop="16dp" android:layout_weight="1" android:layout_width="match_parent">
+<LinearLayout android:id="@+id/widgetListContainer" android:layout_height="wrap_content" android:layout_width="match_parent" android:orientation="vertical"/>
+</ScrollView>
+</LinearLayout>

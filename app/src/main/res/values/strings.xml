@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+<string name="app_name">TextWidget Studio</string>
+<string name="widget_name">Custom Text Widget</string>
+<string name="widget_desc">Fully customizable text widget with custom shapes, fonts, placement, and background transparency.</string>
+</resources>
