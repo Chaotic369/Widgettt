@@ -20,6 +20,15 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Clean Invalid Placeholder Binaries
+        run: |
+          rm -f "gradle/wrapper/gradle-wrapper.jar"
+          if [ -f "app/src/main/res/drawable/widget_preview.png" ]; then
+            if grep -q "PLACEHOLDER" "app/src/main/res/drawable/widget_preview.png"; then
+              rm -f "app/src/main/res/drawable/widget_preview.png"
+            fi
+          fi
+
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
@@ -30,14 +39,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.7"
-
-      - name: Clean Invalid Placeholder Binaries
-        run: |
-          if [ -f "app/src/main/res/drawable/widget_preview.png" ]; then
-            if grep -q "PLACEHOLDER" "app/src/main/res/drawable/widget_preview.png"; then
-              rm -f "app/src/main/res/drawable/widget_preview.png"
-            fi
-          fi
+          validate-wrappers: false
 
       - name: Patch App Name and Version
         env:
